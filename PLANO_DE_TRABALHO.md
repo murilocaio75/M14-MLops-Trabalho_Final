@@ -114,7 +114,7 @@ Nos dados reais, a partir de outubro de 2017 as 10 categorias principais pratica
 - Detalhe: depois do pico, o MAE volta para ≈ 20 **mesmo com demanda real zero**, porque o modelo continua
   prevendo vendas pequenas. **O MAE sozinho engana**; o painel "real x prevista" mostra a ruptura.
 
-### Resultado real das 3 execuções no Docker (27/10/2026, n_trials = 14)
+### Resultado real das 3 execuções no Docker (27/10/2026; n_trials = 14 no 1º corte e 15 nos demais)
 
 | Corte | Candidato | RMSE candidato | RMSE baseline | Champion anterior (RMSE) | Decisão | MAE monitorado | Demanda real x prevista (12 semanas) |
 |---|---|---|---|---|---|---|---|
