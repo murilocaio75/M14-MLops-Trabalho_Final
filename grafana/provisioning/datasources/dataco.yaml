@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: DataCo
+    uid: dataco-pg
+    type: grafana-postgresql-datasource
+    url: postgres:5432
+    user: airflow
+    isDefault: true
+    jsonData:
+      database: dataco
+      sslmode: disable
+      postgresVersion: 1300
+    secureJsonData:
+      password: airflow

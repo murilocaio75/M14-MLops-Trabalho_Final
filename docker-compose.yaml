@@ -1,0 +1,152 @@
+# Trabalho Final - Pipeline de MLOps com MLflow para Previsão de Demanda (DataCo Supply Chain)
+#
+# Mesma base da Aula 4 (Airflow + Postgres + Grafana), trocando o RAG (Elasticsearch + LLM)
+# por um pipeline de ML tabular rastreado e versionado no MLflow (Aula 1).
+#
+# Serviços:
+#   postgres           -> bancos: airflow (metadados), mlflow (tracking/registry), dataco (dados do negócio)
+#   airflow-*          -> orquestra a DAG pipeline_demanda_dataco (LocalExecutor, sem Redis/Celery)
+#   mlflow             -> servidor de tracking + Model Registry (artefatos servidos pelo próprio servidor)
+#   grafana            -> painel de monitoramento lendo o banco dataco (datasource e dashboard provisionados)
+#
+# WARNING: configuração para desenvolvimento local. Não use em produção.
+---
+x-airflow-common: &airflow-common
+  build: moduloairflow/.
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "trabalho-final-dataco"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # Endereço do MLflow dentro da rede Docker (nome do serviço)
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+  volumes:
+    - ./moduloairflow/dags:/opt/airflow/dags
+    - ./moduloairflow/logs:/opt/airflow/logs
+    - ./moduloairflow/testes:/opt/airflow/testes
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on: &airflow-common-depends-on
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: dataco_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      # Cria os bancos mlflow e dataco na primeira subida (volume vazio)
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "5433:5432"
+    networks:
+      - network
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    container_name: dataco_airflow_webserver
+    ports:
+      - "8081:8080"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - network
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    container_name: dataco_airflow_scheduler
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_started
+    networks:
+      - network
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: dataco_airflow_init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/testes
+        chown -R "${AIRFLOW_UID:-50000}:0" /sources/logs /sources/dags /sources/testes
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+    user: "0:0"
+    volumes:
+      - ./moduloairflow:/sources
+    networks:
+      - network
+
+  mlflow:
+    build: mlflow/.
+    container_name: dataco_mlflow
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://airflow:airflow@postgres:5432/mlflow
+      --artifacts-destination /mlartifacts
+      --serve-artifacts
+      --host 0.0.0.0
+      --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-artifacts:/mlartifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - network
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: dataco_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      # Datasource e dashboard entram sozinhos (sem configurar na mão como na Aula 4)
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - network
+    depends_on:
+      - postgres
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  postgres-db-volume:
+  mlflow-artifacts:
+  grafana-storage:

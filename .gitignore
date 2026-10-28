@@ -1,0 +1,10 @@
+# Dados brutos do DataCo: baixar do Kaggle (ver README, passo 0)
+moduloairflow/dags/dados/*
+!moduloairflow/dags/dados/.gitkeep
+*.zip
+
+# Gerados pelo Airflow e pelo Python
+moduloairflow/logs/
+moduloairflow/plugins/
+__pycache__/
+*.pyc

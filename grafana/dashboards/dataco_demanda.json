@@ -1,0 +1,622 @@
+{
+  "uid": "dataco-demanda",
+  "title": "DataCo - Monitoramento do modelo de demanda",
+  "tags": [
+    "mlops",
+    "dataco"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "2015-01-01T00:00:00.000Z",
+    "to": "2018-03-01T00:00:00.000Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "corte",
+        "label": "Data de corte",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "dataco-pg"
+        },
+        "query": "SELECT DISTINCT data_corte::text FROM previsoes ORDER BY 1 DESC",
+        "definition": "SELECT DISTINCT data_corte::text FROM previsoes ORDER BY 1 DESC",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "current": {},
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Champion",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT versao_candidata AS versao FROM decisoes_modelo WHERE decisao = 'promovido' ORDER BY executado_em DESC LIMIT 1"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "description": "Versão do modelo que está com o alias @champion no Model Registry agora (não depende do corte escolhido)."
+    },
+    {
+      "id": 2,
+      "title": "Execuções",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS execucoes FROM decisoes_modelo"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "description": "Quantas vezes o gate de promoção avaliou um candidato."
+    },
+    {
+      "id": 3,
+      "title": "Rejeitados",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS rejeitados FROM decisoes_modelo WHERE decisao = 'rejeitado'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "description": "Quantos candidatos o gate barrou por não superarem o baseline ou o champion."
+    },
+    {
+      "id": 4,
+      "title": "MAE (corte)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT AVG(ABS(demanda_real - demanda_prevista)) AS mae FROM previsoes WHERE data_corte = '$corte'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "description": "Erro absoluto médio, em unidades, de uma categoria numa semana, nas 12 semanas após o corte. Verde abaixo de 30, amarelo até 50, vermelho acima de 50 (mesmo limiar do gráfico de MAE)."
+    },
+    {
+      "id": 5,
+      "title": "Demanda total semanal: histórico real x previsões de cada corte",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT semana::timestamp AS time, SUM(demanda) AS \"Real\" FROM features_demanda_semanal GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT semana::timestamp AS time, 'Previsto (corte ' || data_corte || ', v' || versao_modelo || ')' AS metric, SUM(demanda_prevista) AS value FROM previsoes GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Real"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8c8c8c"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "Erro absoluto médio por semana (MAE), por corte",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT semana::timestamp AS time, 'corte ' || data_corte AS metric, AVG(ABS(demanda_real - demanda_prevista)) AS value FROM previsoes GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "thresholdsStyle": {
+              "mode": "line+area"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Erro por categoria (corte selecionado)",
+      "type": "barchart",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT categoria, ROUND(AVG(ABS(demanda_real - demanda_prevista))::numeric, 1) AS \"MAE\" FROM previsoes WHERE data_corte = '$corte' GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xField": "categoria",
+        "showValue": "always",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "barWidth": 0.7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Histórico de decisões do gate (Model Registry)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT to_char(executado_em, 'YYYY-MM-DD HH24:MI') AS \"Executado em (UTC)\", data_corte::text AS \"Corte\", versao_candidata AS \"Candidato\", ROUND(rmse_candidato::numeric, 2) AS \"RMSE candidato\", ROUND(rmse_baseline::numeric, 2) AS \"RMSE baseline\", versao_champion AS \"Champion anterior\", ROUND(rmse_champion::numeric, 2) AS \"RMSE champion\", decisao AS \"Decisão\", motivo AS \"Motivo\" FROM decisoes_modelo ORDER BY executado_em DESC"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Demanda real (12 semanas após o corte)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "description": "Unidades vendidas nas 10 categorias nas 12 semanas monitoradas depois da data de corte.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT SUM(demanda_real) AS \"Real\" FROM previsoes WHERE data_corte = '$corte'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8c8c"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Demanda prevista (mesmas 12 semanas)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "description": "Soma das previsões do champion para as mesmas 12 semanas.",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ROUND(SUM(demanda_prevista)::numeric) AS \"Prevista\" FROM previsoes WHERE data_corte = '$corte'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#ff9830"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Diferença previsto x real",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "dataco-pg"
+      },
+      "description": "(previsto − real) / real. Positivo: previu a mais (estoque parado). Negativo: previu a menos (ruptura).",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "dataco-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ROUND(((SUM(demanda_prevista) - SUM(demanda_real)) / NULLIF(SUM(demanda_real), 0) * 100)::numeric, 1) AS \"Diferença\" FROM previsoes WHERE data_corte = '$corte'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -25
+              },
+              {
+                "color": "green",
+                "value": -10
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "version": 4
+}
