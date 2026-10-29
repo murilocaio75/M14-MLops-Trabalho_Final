@@ -8,10 +8,9 @@
 
 ## 1. O que o professor pediu
 
-Não houve enunciado formal. O pedido foi uma **apresentação** com uma **solução de negócio** que aplique o
+Uma **apresentação** com uma **solução de negócio** que aplique o
 conteúdo das **aulas 1 a 4**, com **ênfase nas aplicações da aula 4**, usando o case escolhido na Atividade 1.
-O foco é **demonstrar o pipeline de MLflow aplicado ao dataset**, não criar fluxos complexos nem aprofundar
-em modelos de machine learning.
+O foco é **demonstrar o pipeline de MLflow aplicado ao dataset**.
 
 ## 2. Nossa ideia em uma frase
 
