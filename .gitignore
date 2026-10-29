@@ -3,6 +3,9 @@ moduloairflow/dags/dados/*
 !moduloairflow/dags/dados/.gitkeep
 *.zip
 
+# Arquivos temporários do Office (criados enquanto um .pptx ou .docx está aberto)
+~$*
+
 # Gerados pelo Airflow e pelo Python
 moduloairflow/logs/
 moduloairflow/plugins/

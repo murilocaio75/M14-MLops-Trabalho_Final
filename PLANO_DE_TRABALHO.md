@@ -1,8 +1,10 @@
 # Plano de Trabalho — Trabalho Final de MLOps
 
-**Disciplina:** MLOps (Generative AI Academy · Dell / Unisinos) · Prof. Dr. Marcos Hoffmann
+**Curso:** Generative AI Academy · Dell / Unisinos
+**Disciplina:** MLOps · Prof. Marcos Leandro Hoffmann
+**Alunos:** Caio Murilo, Gustavo Rost, Lucca Becker, Lyon Alves, Victor Franceschini
 **Case:** DataCo Global Supply Chain — previsão de demanda semanal por categoria
-**Data:** 27/10/2026
+**Apresentado em:** 28/10/2026
 
 ---
 
@@ -88,20 +90,22 @@ A história fecha sozinha: diagnóstico → lacunas → ações → **ações im
 - **`data_corte` simula "hoje".** O modelo só enxerga dados até essa data. Rodar a DAG de novo com um corte
   mais recente simula a passagem do tempo e o retreino.
 - **Divisão temporal, não aleatória.** Treino no passado, validação nas 12 semanas antes do corte e
-  monitoramento nas 12 semanas depois. Isso responde à dúvida que levantamos na Atividade 1 sobre o R² de 0,97
-  com divisão aleatória.
+  monitoramento nas 12 semanas depois. Isso fecha a dúvida da Atividade 1 sobre o R² de 0,97 do repositório
+  original: conferindo o código, a causa principal é vazamento de dados (o modelo recebia `Sales`, que é
+  preço × quantidade), somado à divisão aleatória e ao uso de só um trimestre. Detalhes no README.
 - **Gate de dois critérios.** O candidato precisa ter RMSE menor que o **baseline ingênuo** ("a semana que vem
   repete a anterior") **e** menor que o **champion atual**, medidos na mesma janela.
 - **Rastreabilidade.** Cada versão do modelo leva model card, data de corte, RMSE, decisão do gate e o hash dos
   dados de treino. Dá para responder "quem treinou, com quais dados e qual versão está em produção".
 
-## 7. A demo: três execuções da DAG
+## 7. A demo: quatro execuções da DAG
 
-| # | data_corte | Resultado esperado | Mensagem para a banca |
+| # | data_corte | Resultado | Mensagem |
 |---|---|---|---|
 | 1 | `2016-06-27` | v1 promovida (não havia champion). MAE ≈ 20 | O pipeline coloca o primeiro modelo em produção sozinho |
 | 2 | `2017-03-27` | v2 comparada com v1 na mesma janela; promovida (RMSE 31,5 contra 32,5) | Retreino com critério, não troca às cegas |
 | 3 | `2017-09-25` | v3 promovida, mas o MAE sobe para ≈ 66 | **O gate aprova, mas o monitoramento acusa o problema** |
+| 4 | `2017-09-25` (ao vivo) | candidato empata com a v3 (26,8) e é rejeitado | **Sem dados novos, o modelo de produção não muda**; o pipeline é reprodutível |
 
 ### O ponto alto: a ruptura de outubro de 2017
 
@@ -121,7 +125,8 @@ Nos dados reais, a partir de outubro de 2017 as 10 categorias principais pratica
 | 2017-03-27 | v2 | 31,5 | 39,2 | v1 (32,5) | promovido | 23,4 | 26.188 x 27.486 |
 | 2017-09-25 | v3 | 26,8 | 35,8 | v2 (35,3) | promovido | **66,2** | **128 x 8.077** |
 
-Os números são iguais aos do teste local: com a semente fixa do Optuna, o pipeline é reprodutível.
+Os números são iguais aos do teste local: com a semente fixa do Optuna, o pipeline é reprodutível. A 4ª execução,
+feita ao vivo, repetiu o corte 2017-09-25 com `n_trials = 15`: o candidato empatou com a v3 (RMSE 26,8) e foi rejeitado.
 
 ## 8. Resultado esperado na régua de maturidade
 
@@ -138,44 +143,47 @@ Estimativa nossa, para o slide de fechamento (não é nota oficial):
 O que **não** fizemos (vale dizer na apresentação): CI/CD externo (GitHub Actions), alerta automático por
 e-mail, detecção formal de drift (Evidently) e deploy em nuvem.
 
-## 9. Estrutura sugerida da apresentação (≈ 10 slides)
+## 9. Estrutura da apresentação final (12 slides)
+
+Arquivo: [apresentacao/DataCo_MLOps_Trabalho_Final.pptx](apresentacao/DataCo_MLOps_Trabalho_Final.pptx)
 
 | # | Slide | Conteúdo |
 |---|---|---|
-| 1 | Capa | Título, grupo, disciplina |
-| 2 | Retomada | Diagnóstico 6,0/12, as 3 lacunas e as 3 ações |
-| 3 | Business case | Demanda semanal por categoria; custo do erro (estoque parado x ruptura) |
-| 4 | Arquitetura | Diagrama + qual aula originou cada peça |
-| 5 | A DAG | Print do grafo do Airflow com as 7 tarefas |
-| 6 | MLflow Tracking | Print do experimento: run pai + runs do Optuna, métricas e gráfico |
-| 7 | Model Registry e gate | Versões, alias `champion`, model card e tabela de decisões |
-| 8 | Monitoramento | Print do Grafana: real x prevista e MAE por semana |
-| 9 | Demo: a ruptura de 2017 | O gate aprova, o monitoramento acusa |
-| 10 | Régua antes e depois | 6,0 → ≈ 8,5, limitações e próximos passos |
+| 1 | Capa | Título, curso, alunos e link do repositório |
+| 2 | Retomada | Diagnóstico 6,0/12, as lacunas e como o trabalho responde |
+| 3 | Caso de negócio | Custo do erro (estoque parado x ruptura) e números da base |
+| 4 | Arquitetura | Fluxo CSV → Airflow → MLflow → Postgres → Grafana e o que veio de cada aula |
+| 5 | A DAG | Print do Airflow com as 7 etapas |
+| 6 | Simular o tempo | Data de corte, treino, validação e monitoramento |
+| 7 | MLflow Tracking | Experimento com as runs do Optuna e a run do corte 3 |
+| 8 | O gate | Regra de promoção, log do Airflow e Model Registry |
+| 9 | Tempo normal | Grafana nos cortes 1 e 2: −1,0% e +5,0% |
+| 10 | A ruptura | 128 vendidas x 8.077 previstas: o gate aprovou, o monitoramento acusou |
+| 11 | Régua | De 6,0 para ≈ 8,5, componente por componente |
+| 12 | Próximos passos | O que falta para o nível Avançado |
 
 
 ## 10. Como rodar (resumo)
 
 Detalhes completos no [README.md](README.md).
 
-1. Iniciar o Docker Desktop.
-2. Derrubar a stack da Aula 4, se estiver de pé (mesmas portas): `docker-compose down` na pasta `Aula_4`.
-3. Na pasta `Trabalho_Final`: `docker-compose up --build -d` e conferir com `docker-compose ps`.
+1. Baixar o dataset `DataCoSupplyChainDataset.csv` do Kaggle (~95 MB, fora do Git) e colocar em
+   `moduloairflow/dags/dados/` (link no README, passo 0).
+2. Iniciar o Docker Desktop, com as portas 8081, 5433, 5000 e 3000 livres.
+3. Na pasta do projeto: `docker-compose up --build -d` e conferir com `docker-compose ps`.
 4. No Airflow (localhost:8081), disparar a DAG `pipeline_demanda_dataco` com **▶ Trigger DAG**,
-   informando `data_corte` e `n_trials = 15`. Repetir para os 3 cortes da seção 7, um por vez.
+   informando `data_corte` e `n_trials`. Repetir para as execuções da seção 7, uma por vez.
 5. Conferir MLflow (localhost:5000) e Grafana (localhost:3000, pasta **DataCo**).
 
-O dataset `DataCoSupplyChainDataset.csv` (Kaggle, ~95 MB) já está em `moduloairflow/dags/dados/`.
 
+## 11. Cuidados ao executar
 
-## 11. Riscos e cuidados
-
-| Risco | Como lidar |
+| Situação | Como lidar |
 |---|---|
 | Conflito de portas com a Aula 4 (8081, 5433, 3000) ou porta 5000 ocupada | Derrubar a Aula 4; se a 5000 estiver em uso, trocar para `5001:5000` no compose |
 | Falha ao montar a imagem do Airflow (conflito de versões no pip) | Copiar o erro do build e ajustar as versões em `moduloairflow/requirements.txt` |
-| Números diferentes da simulação local | Normal; usar os números da execução real nos slides |
 | Pouca memória no Docker Desktop | Reduzir `n_trials` (ex.: 5) |
+| Encerrar sem perder as execuções | `docker-compose down` (sem `-v`; o `-v` apaga os volumes) |
 
 ## 12. Estrutura dos arquivos
 
@@ -183,6 +191,8 @@ O dataset `DataCoSupplyChainDataset.csv` (Kaggle, ~95 MB) já está em `moduloai
 Trabalho_Final/
 ├── PLANO_DE_TRABALHO.md         # este documento
 ├── README.md                    # instruções de execução
+├── apresentacao/                # slides da apresentação final
+├── prints/                      # telas usadas nos slides
 ├── docker-compose.yaml          # Postgres, Airflow, MLflow, Grafana
 ├── postgres/init.sql            # cria os bancos mlflow e dataco
 ├── mlflow/Dockerfile            # servidor MLflow 2.17.2
@@ -192,7 +202,7 @@ Trabalho_Final/
     ├── testes/test_pipeline.py  # 13 testes de unidade
     └── dags/
         ├── pipeline_demanda_dataco.py
-        ├── dados/               # CSV do DataCo
+        ├── dados/               # CSV do DataCo (baixar do Kaggle)
         └── dataco/              # config, db, ingestao, features, validacao,
                                  # modelagem, treino, promocao, previsao
 ```

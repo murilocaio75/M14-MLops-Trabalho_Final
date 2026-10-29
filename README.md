@@ -1,5 +1,13 @@
 # Trabalho Final - Pipeline de MLOps com MLflow: Previsão de Demanda DataCo
 
+| | |
+|---|---|
+| **Curso** | Generative AI Academy - Dell / Unisinos |
+| **Disciplina** | MLOps |
+| **Professor** | Marcos Leandro Hoffmann |
+| **Alunos** | Caio Murilo, Gustavo Rost, Lucca Becker, Lyon Alves, Victor Franceschini |
+| **Apresentação** | [apresentacao/DataCo_MLOps_Trabalho_Final.pptx](apresentacao/DataCo_MLOps_Trabalho_Final.pptx) |
+
 Caso de negócio: **previsão de demanda semanal por categoria** da DataCo Global (supply chain), o mesmo case
 do diagnóstico de maturidade da Atividade 1 (nota 6,0 de 12). O trabalho implementa as 3 ações propostas lá:
 
@@ -37,6 +45,9 @@ do diagnóstico de maturidade da Atividade 1 (nota 6,0 de 12). O trabalho implem
 
 ```
 Trabalho_Final/
+├── apresentacao/                # slides da apresentação final (.pptx)
+├── prints/                      # telas do Airflow, MLflow e Grafana usadas nos slides
+├── PLANO_DE_TRABALHO.md         # plano e decisões do grupo
 ├── docker-compose.yaml          # base da Aula 4 sem Elasticsearch/Redis/LLM, com MLflow
 ├── postgres/init.sql            # cria os bancos mlflow e dataco
 ├── mlflow/Dockerfile            # servidor MLflow 2.17.2 + driver Postgres
@@ -48,7 +59,7 @@ Trabalho_Final/
     ├── testes/test_pipeline.py        # 13 testes de unidade (rodam como 1ª tarefa da DAG)
     └── dags/
         ├── pipeline_demanda_dataco.py # a DAG
-        ├── dados/DataCoSupplyChainDataset.csv
+        ├── dados/                     # colocar aqui o CSV do Kaggle (passo 0)
         └── dataco/                    # config, db, ingestao, features, validacao,
                                        # modelagem, treino, promocao, previsao
 ```
@@ -72,17 +83,12 @@ Trabalho_Final/
    [DataCo SMART SUPPLY CHAIN FOR BIG DATA ANALYSIS](https://www.kaggle.com/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis),
    baixe o arquivo, descompacte e coloque o `DataCoSupplyChainDataset.csv` em `moduloairflow/dags/dados/`.
 1. Inicie o Docker Desktop.
-2. Se a stack da Aula 4 estiver de pé, derrube-a (as portas 8081, 5433 e 3000 são as mesmas):
+2. As portas 8081, 5433, 5000 e 3000 precisam estar livres. Se a stack da Aula 4 estiver rodando, que usa as
+   mesmas portas, derrube-a com `docker-compose down` na pasta dela.
+
+3. Na pasta deste projeto, suba a stack (a primeira vez demora alguns minutos para montar as imagens):
 
    ```
-   cd ../Aula_4
-   docker-compose down
-   ```
-
-3. Suba a stack do trabalho (a primeira vez demora alguns minutos para montar as imagens):
-
-   ```
-   cd ../Trabalho_Final
    docker-compose up --build -d
    docker-compose ps
    ```
@@ -99,27 +105,50 @@ Trabalho_Final/
    - **Grafana** (localhost:3000): pasta **DataCo**, escolha a **Data de corte** no topo do painel.
    - **Logs** da tarefa `avalia_e_promove` mostram a decisão do gate em uma linha.
 
-## Roteiro da demo (3 execuções)
+## Roteiro da demo (4 execuções)
 
-Disparar a DAG 3 vezes, uma por vez, com `n_trials = 15`:
+Disparar a DAG uma vez por linha, sempre esperando a anterior terminar:
 
-| # | data_corte | O que mostrar |
-|---|---|---|
-| 1 | `2016-06-27` | Primeiro modelo: gate promove v1 (não há champion). MAE do período monitorado ≈ 20. |
-| 2 | `2017-03-27` | Retreino: v2 é comparado com v1 na mesma janela e o gate decide (no teste local, promoveu). |
-| 3 | `2017-09-25` | **O gate aprova, mas o monitoramento acusa o problema**: a partir de outubro de 2017 as 10 categorias principais praticamente param de vender (128 unidades reais contra cerca de 8 mil previstas em 12 semanas). |
+| # | data_corte | n_trials | O que mostrar |
+|---|---|---|---|
+| 1 | `2016-06-27` | 14 | Primeiro modelo: o gate promove a v1 (não há champion). |
+| 2 | `2017-03-27` | 15 | Retreino: a v2 é comparada com a v1 na mesma janela e promovida. |
+| 3 | `2017-09-25` | 15 | **O gate aprova, mas o monitoramento acusa o problema**: a partir de outubro de 2017 as 10 categorias principais praticamente param de vender. |
+| 4 | `2017-09-25` | 15 | **O gate recusa**: sem dados novos, o candidato empata com o champion e não é promovido. A execução feita ao vivo na apresentação. |
 
-Números de referência de um teste local com os dados reais (podem variar um pouco no Docker por versão de biblioteca):
+Resultados obtidos no Docker (27/10/2026). Com a semente fixa do Optuna, os números se repetem a cada execução:
 
-| corte | RMSE candidato | RMSE baseline | RMSE champion anterior | decisão | MAE monitorado |
-|---|---|---|---|---|---|
-| 2016-06-27 | 27,9 | 36,4 | — | promovido | 20,0 |
-| 2017-03-27 | 31,5 | 39,2 | 32,5 (v1) | promovido | 23,4 |
-| 2017-09-25 | 26,8 | 35,8 | 35,3 (v2) | promovido | 66,2 (pico na 1ª semana de outubro) |
+| Corte | Candidato | RMSE candidato | RMSE baseline | Champion anterior (RMSE na mesma janela) | Decisão | MAE monitorado | Demanda real x prevista (12 semanas) |
+|---|---|---|---|---|---|---|---|
+| 2016-06-27 | v1 | 27,9 | 36,4 | — | promovido | 20,0 | 27.661 x 27.393 |
+| 2017-03-27 | v2 | 31,5 | 39,2 | v1 (32,5) | promovido | 23,4 | 26.188 x 27.486 |
+| 2017-09-25 | v3 | 26,8 | 35,8 | v2 (35,3) | promovido | **66,2** | **128 x 8.077** |
+| 2017-09-25 | v4 | 26,8 | 35,8 | v3 (26,8) | **rejeitado** | 66,2 (champion segue v3) | 128 x 8.077 |
 
-Ponto para a apresentação: depois do pico, o MAE volta para ≈ 20 **mesmo com demanda real zero**,
-porque o modelo segue prevendo vendas pequenas. O MAE sozinho engana; o painel "real x prevista" mostra a ruptura.
-Lição de MLOps: o gate valida o passado; só o monitoramento enxerga o que acontece depois do deploy.
+Como ler:
+
+- **Cada linha é uma prova diferente**: os modelos são medidos nas 12 semanas antes daquele corte, então a
+  comparação vale dentro da linha.
+- **Modelos envelhecem**: a v1 errava 27,9 quando foi criada e 32,5 nos dados de 2017; a v2 foi de 31,5 para 35,3.
+- **Depois do pico de outubro de 2017, o MAE volta para ≈ 20 mesmo com demanda real zero**, porque o modelo segue
+  prevendo vendas pequenas. O MAE sozinho engana; o painel "real x prevista" mostra a ruptura.
+- **Lição de MLOps**: o gate valida o passado; só o monitoramento enxerga o que acontece depois do deploy.
+
+## Achado: o R² de 0,97 do repositório original
+
+Na Atividade 1 desconfiamos do R² de 0,97 informado pelo repositório
+[McGill-MMA-EnterpriseAnalytics/DataCo_Supply_Chain](https://github.com/McGill-MMA-EnterpriseAnalytics/DataCo_Supply_Chain).
+Conferindo o código (`models/demand_forecast/Demand_Forecast_v3.py` e `Demand_Forecast_v6.ipynb`):
+
+- **Vazamento de dados**: o modelo prevê `Order Item Quantity` usando todas as outras colunas, inclusive `Sales`.
+  No CSV original, `Sales` é exatamente preço × quantidade em 100% das linhas, e cada um dos 118 produtos tem
+  preço único. A quantidade sai de uma divisão; o modelo não prevê demanda.
+- **Divisão aleatória** (`split_frame(ratios=[0.6])`) em dados com data.
+- **Recorte pequeno**: só o 1º trimestre de 2015.
+
+Este projeto evita os três problemas: as entradas são só o passado (lags e médias das semanas anteriores), a
+divisão é sempre temporal e a avaliação usa 3 anos de dados. Por isso os números são mais modestos (20 a 25%
+melhores que a regra simples), mas representam o que o modelo faria em produção.
 
 ## Rodar os testes fora da DAG
 
