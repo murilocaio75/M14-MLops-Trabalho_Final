@@ -153,29 +153,8 @@ e-mail, detecção formal de drift (Evidently) e deploy em nuvem.
 | 9 | Demo: a ruptura de 2017 | O gate aprova, o monitoramento acusa |
 | 10 | Régua antes e depois | 6,0 → ≈ 8,5, limitações e próximos passos |
 
-## 10. Divisão de tarefas sugerida
 
-| Frente | Responsável | Entregas |
-|---|---|---|
-| Infra e execução | _a definir_ | Subir a stack, rodar as 3 execuções, registrar problemas e soluções |
-| Evidências | _a definir_ | Prints do Airflow, MLflow (tracking e registry) e Grafana para os slides 5 a 9 |
-| Narrativa de negócio | _a definir_ | Slides 1 a 4 e 10; ligação com a Atividade 1; régua antes e depois |
-| Revisão técnica | _a definir_ | Conferir números nos slides x execução real; preparar respostas para perguntas |
-| Apresentação | todos | Ensaio com tempo marcado; quem fala cada parte |
-
-## 11. Cronograma
-
-| Etapa | Status |
-|---|---|
-| Escolha da abordagem e do caso de uso | ✅ Concluído |
-| Estrutura do projeto (compose, DAG, módulos, Grafana) | ✅ Concluído |
-| Testes de unidade (13) e simulação com dados reais fora do Docker | ✅ Concluído |
-| Subir a stack no Docker e rodar as 3 execuções | ✅ Concluído (2 correções: numpy no Dockerfile e versão como texto no gate) |
-| Coletar prints e números reais | 🔄 Números coletados; prints em andamento |
-| Montar os slides | ⏳ Pendente |
-| Ensaio da apresentação | ⏳ Pendente |
-
-## 12. Como rodar (resumo)
+## 10. Como rodar (resumo)
 
 Detalhes completos no [README.md](README.md).
 
@@ -188,7 +167,8 @@ Detalhes completos no [README.md](README.md).
 
 O dataset `DataCoSupplyChainDataset.csv` (Kaggle, ~95 MB) já está em `moduloairflow/dags/dados/`.
 
-## 13. Riscos e cuidados
+
+## 11. Riscos e cuidados
 
 | Risco | Como lidar |
 |---|---|
@@ -196,10 +176,8 @@ O dataset `DataCoSupplyChainDataset.csv` (Kaggle, ~95 MB) já está em `moduloai
 | Falha ao montar a imagem do Airflow (conflito de versões no pip) | Copiar o erro do build e ajustar as versões em `moduloairflow/requirements.txt` |
 | Números diferentes da simulação local | Normal; usar os números da execução real nos slides |
 | Pouca memória no Docker Desktop | Reduzir `n_trials` (ex.: 5) |
-| Pergunta da banca: "o modelo é bom?" | O foco é o ciclo de vida; o gate garante que ele é melhor que o baseline e que a versão anterior |
-| Pergunta da banca: "por que a demanda zerou em 2017?" | É o que os dados mostram; não sabemos a causa de negócio. O ponto é que o pipeline percebe |
 
-## 14. Estrutura dos arquivos
+## 12. Estrutura dos arquivos
 
 ```
 Trabalho_Final/
