@@ -8,6 +8,8 @@
 | **Alunos** | Caio Murilo, Gustavo Rost, Lucca Becker, Lyon Alves, Victor Franceschini |
 | **Apresentação** | [apresentacao/DataCo_MLOps_Trabalho_Final.pptx](apresentacao/DataCo_MLOps_Trabalho_Final.pptx) |
 
+> 📄 **[Case study do projeto](CASE_STUDY.md)** — problema, solução, resultados e aprendizados em uma página.
+
 Caso de negócio: **previsão de demanda semanal por categoria** da DataCo Global (supply chain), o mesmo case
 do diagnóstico de maturidade da Atividade 1 (nota 6,0 de 12). O trabalho implementa as 3 ações propostas lá:
 
